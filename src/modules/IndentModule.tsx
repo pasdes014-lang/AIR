@@ -215,10 +215,12 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
       if (matched[k] != null && !isNaN(Number(matched[k]))) { closingStock = Number(matched[k]); break; }
     }
     if (closingStock === null) {
-      // fallback to stockQty + purchaseActualQtyInStore
+      // fallback to match Stock Module calculation: stockQty + purStoreOkQty + vendorOkQty - inHouseIssuedQty
       const stockQty = (matched.stockQty || matched.stock_qty || matched.stock || matched.StockQty || matched.currentStock) || 0;
-      const purchaseQty = (matched.purchaseActualQtyInStore || matched.purchase_actual_qty_in_store || matched.purchaseActualQty || matched.purchase_actual_qty) || 0;
-      closingStock = Number(stockQty) + Number(purchaseQty) || 0;
+      const purStoreOkQty = (matched.purStoreOkQty || matched.pur_store_ok_qty || matched.PurStoreOkQty) || 0;
+      const vendorOkQty = (matched.vendorOkQty || matched.vendor_ok_qty || matched.VendorOkQty) || 0;
+      const inHouseIssuedQty = (matched.inHouseIssuedQty || matched.in_house_issued_qty || matched.InHouseIssuedQty) || 0;
+      closingStock = Number(stockQty) + Number(purStoreOkQty) + Number(vendorOkQty) - Number(inHouseIssuedQty) || 0;
     }
 
     console.debug('[IndentModule] Stock found for', itemCode, ':', closingStock, 'matchedBy:', matched);
