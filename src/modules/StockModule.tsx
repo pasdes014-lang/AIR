@@ -613,11 +613,13 @@ const StockModule: React.FC = () => {
     if (userUid && rec && typeof (rec as any).id === 'string') {
       try {
         await deleteStockRecord(userUid, String((rec as any).id));
-        setRecords((prev) => prev.filter((_, i) => i !== idx));
+        // Don't update local state — let Firestore subscription auto-update
       } catch (err) {
         console.error('[StockModule] Failed to delete stock record from Firestore:', err);
+        alert('Failed to delete record. Please try again.');
       }
     } else {
+      // Offline fallback: update local state only
       setRecords((prev) => prev.filter((_, i) => i !== idx));
     }
   };
