@@ -763,6 +763,8 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
             {indents.map((indent, indentIndex) =>
               indent.items.map((item, itemIdx) => {
                 const analysis = getIndentAnalysis(item.itemCode, indentIndex, item.qty);
+                // Show available BEFORE this indent (total stock minus previous indents)
+                const availableBefore = (analysis.totalStock || 0) - (analysis.previousIndentsQty || 0);
                 
                 return (
                   <tr key={`${indentIndex}-${itemIdx}`}>
@@ -778,7 +780,7 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
                     <td>{analysis.poQuantity}</td>
                     <td>
                       <span style={{
-                        background: analysis.availableForThisIndent >= 0 ? '#43a047' : '#e53935',
+                        background: availableBefore >= 0 ? '#43a047' : '#e53935',
                         color: '#fff',
                         fontWeight: 700,
                         padding: '6px 10px',
@@ -787,7 +789,7 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
                         minWidth: 44,
                         textAlign: 'center'
                       }}>
-                        {analysis.availableForThisIndent}
+                        {availableBefore}
                       </span>
                     </td>
                     <td>
