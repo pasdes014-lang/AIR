@@ -638,10 +638,10 @@ const StockModule: React.FC = () => {
                 onChange={handleChange}
                 style={{ width: "100%", padding: 6, borderRadius: 4, border: "1px solid #bbb" }}
               >
-                <option value="">Select Item Name</option>
+                <option value="">Select Item Name and Code</option>
                 {itemMasterState.map((item) => (
                   <option key={item.itemCode} value={item.itemName}>
-                    {item.itemName}
+                    {item.itemName} - {item.itemCode}
                   </option>
                 ))}
               </select>
