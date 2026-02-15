@@ -23,10 +23,6 @@ interface StockRecord {
   closingStock: number;
 }
 
-// StockModule no longer uses localStorage at runtime; data comes from Firestore subscriptions
-// Keep this key only to migrate any pre-existing localStorage records into Firestore on sign-in
-const LOCAL_STORAGE_KEY = "stock-records";
-
 const STOCK_MODULE_FIELDS = [
   { key: "itemName", label: "Item Name", type: "text" },
   { key: "stockQty", label: "Stock Qty", type: "number" },
@@ -336,37 +332,11 @@ const StockModule: React.FC = () => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       const uid = u ? u.uid : null;
       setUserUid(uid);
-
-      // Migrate any existing localStorage `stock-records` into Firestore so data syncs across devices
-      if (uid) {
-        (async () => {
-          try {
-            const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (raw) {
-              const arr = JSON.parse(raw || '[]');
-              if (Array.isArray(arr) && arr.length > 0) {
-                for (const it of arr) {
-                  try {
-                    const payload = { ...it } as any;
-                    if (typeof payload.id !== 'undefined') delete payload.id;
-                    await addStockRecord(uid, payload);
-                  } catch (err) {
-                    console.warn('[StockModule] migration addStockRecord failed for item', it, err);
-                  }
-                }
-                try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch {}
-              }
-            }
-          } catch (err) {
-            console.error('[StockModule] Migration from localStorage failed:', err);
-          }
-        })();
-      }
     });
     return () => { try { unsubAuth(); } catch {} };
   }, []);
 
-  // Subscribe to Firestore stockRecords when user is signed in; fallback to localStorage when signed out
+  // Subscribe to Firestore stockRecords when user is signed in
   useEffect(() => {
     let unsub: (() => void) | null = null;
     if (userUid) {
@@ -395,7 +365,7 @@ const StockModule: React.FC = () => {
         console.error('[StockModule] subscribeStockRecords error:', err);
       }
     } else {
-      // signed out — clear records (no localStorage usage)
+      // signed out — clear records
       setRecords([]);
     }
 

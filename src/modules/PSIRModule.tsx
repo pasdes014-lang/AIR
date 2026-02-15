@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import bus from '../utils/eventBus';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { addPsir, updatePsir, subscribePsirs } from '../utils/psirService';
 import { getItemMaster, getPurchaseData, getIndentData, getStockRecords, getPurchaseOrders, updatePurchaseData, updatePurchaseOrder } from '../utils/firestoreServices';
 
@@ -42,39 +41,6 @@ interface PurchaseOrder {
 
 const PSIRModule: React.FC = () => {
   const [psirs, setPsirs] = useState<PSIR[]>([]);
-
-  // Migrate existing localStorage `psirData` into Firestore on sign-in
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      const uid = u ? u.uid : null;
-      if (uid) {
-        (async () => {
-          try {
-            const raw = localStorage.getItem('psirData');
-            if (raw) {
-              const arr = JSON.parse(raw || '[]');
-              if (Array.isArray(arr) && arr.length > 0) {
-                for (const it of arr) {
-                  try {
-                    const payload = { ...it } as any;
-                    if (typeof payload.id !== 'undefined') delete payload.id;
-                    const col = collection(db, 'psirs');
-                    await addDoc(col, { ...payload, userId: uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-                  } catch (err) {
-                    console.warn('[PSIRModule] migration addDoc failed for item', it, err);
-                  }
-                }
-                try { localStorage.removeItem('psirData'); } catch {}
-              }
-            }
-          } catch (err) {
-            console.error('[PSIRModule] Migration failed:', err);
-          }
-        })();
-      }
-    });
-    return () => { try { unsub(); } catch {} };
-  }, []);
 
   const [newPSIR, setNewPSIR] = useState<PSIR>({
     receivedDate: '',
