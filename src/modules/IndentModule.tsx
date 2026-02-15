@@ -393,6 +393,37 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
       return;
     }
 
+    // VALIDATION: Check stock availability against Stock Module closing stock
+    let insufficientStockItems: Array<{ model: string; itemCode: string; requested: number; available: number }> = [];
+    
+    newIndent.items.forEach(item => {
+      const totalStock = getStock(item.itemCode);
+      const requestedQty = Number(item.qty) || 0;
+      
+      if (requestedQty > totalStock) {
+        insufficientStockItems.push({
+          model: item.model,
+          itemCode: item.itemCode,
+          requested: requestedQty,
+          available: totalStock
+        });
+      }
+    });
+
+    if (insufficientStockItems.length > 0) {
+      const itemsList = insufficientStockItems
+        .map(i => `${i.model} (${i.itemCode}): Requested ${i.requested} but only ${i.available} available`)
+        .join('\n');
+      
+      const shouldProceed = window.confirm(
+        `⚠️ INSUFFICIENT STOCK:\n\n${itemsList}\n\nDo you want to proceed anyway?\n(Press OK to continue, Cancel to edit)`
+      );
+      
+      if (!shouldProceed) {
+        return;
+      }
+    }
+
     const indentNo = getNextIndentNo();
     const updated = [...indents, { ...newIndent, indentNo }];
     setIndents(updated);
@@ -722,24 +753,43 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
             <tr style={{ background: '#e3e6f3' }}>
               <th>Item Name</th>
               <th>Item Code</th>
-              <th>Qty</th>
+              <th>Qty Requested</th>
+              <th>Available Stock</th>
               <th>Remaining Stock</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {newIndent.items.map((item, idx) => {
               const remainingStock = getRemainingStock(item.itemCode);
+              const availableStock = getStock(item.itemCode);
+              const hasInsufficientStock = Number(item.qty) > availableStock;
+              
               return (
-                <tr key={idx}>
+                <tr key={idx} style={{ 
+                  background: hasInsufficientStock ? '#ffebee' : 'inherit'
+                }}>
                   <td>{item.model}</td>
                   <td>{item.itemCode}</td>
                   <td>{item.qty}</td>
+                  <td style={{
+                    fontWeight: 600,
+                    color: hasInsufficientStock ? '#e53935' : '#43a047'
+                  }}>
+                    {availableStock}
+                  </td>
                   <td style={{ 
                     color: remainingStock >= 0 ? '#43a047' : '#e53935',
                     fontWeight: 600 
                   }}>
                     {remainingStock}
+                  </td>
+                  <td style={{
+                    fontWeight: 600,
+                    color: hasInsufficientStock ? '#e53935' : '#43a047'
+                  }}>
+                    {hasInsufficientStock ? '⚠️ INSUFFICIENT' : '✓ OK'}
                   </td>
                   <td>
                     <button
@@ -781,6 +831,39 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
           </tbody>
         </table>
       )}
+
+      {newIndent.items.length > 0 && (() => {
+        const stockValidation = newIndent.items.map(item => ({
+          hasInsufficientStock: Number(item.qty) > getStock(item.itemCode)
+        }));
+        const insufficientCount = stockValidation.filter(s => s.hasInsufficientStock).length;
+        const allValid = insufficientCount === 0;
+
+        return (
+          <div style={{
+            padding: 12,
+            marginBottom: 16,
+            borderRadius: 6,
+            background: allValid ? '#f1f8e9' : '#fff3e0',
+            border: `2px solid ${allValid ? '#43a047' : '#ff9800'}`
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>
+              📋 Indent Summary:
+            </div>
+            <div>
+              • Total Items: {newIndent.items.length}
+            </div>
+            <div style={{ color: '#43a047', fontWeight: 600 }}>
+              • ✓ Items with sufficient stock: {newIndent.items.length - insufficientCount}
+            </div>
+            {insufficientCount > 0 && (
+              <div style={{ color: '#ff9800', fontWeight: 600 }}>
+                • ⚠️ Items with INSUFFICIENT stock: {insufficientCount}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div style={{ marginBottom: 24, display: 'flex', gap: 8 }}>
         <button 
