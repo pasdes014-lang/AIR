@@ -165,6 +165,8 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
 
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [_itemNames, _setItemNames] = useState<string[]>([]);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugFilter, setDebugFilter] = useState('');
 
 
   // Helper to normalize item codes for matching
@@ -436,6 +438,31 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
     XLSX.utils.book_append_sheet(wb, ws, 'Indents');
     XLSX.writeFile(wb, 'Indents.xlsx');
   }
+
+  // Prepare debug rows for UI panel
+  const debugRows = indents.flatMap((indent, indentIndex) =>
+    (indent.items || []).map((item: any) => {
+      const analysis = getIndentAnalysis(item.itemCode, indentIndex, item.qty);
+      const availableBefore = (analysis.totalStock || 0) - (analysis.previousIndentsQty || 0);
+      return {
+        indentNo: indent.indentNo,
+        date: indent.date,
+        indentBy: indent.indentBy,
+        oaNo: indent.oaNo,
+        itemName: item.model,
+        itemCode: item.itemCode,
+        qty: Number(item.qty) || 0,
+        totalStock: analysis.totalStock || 0,
+        previousIndentsQty: analysis.previousIndentsQty || 0,
+        poQuantity: analysis.poQuantity || 0,
+        availableBefore,
+        availableForThisIndent: analysis.availableForThisIndent,
+        allocatedAvailable: analysis.allocatedAvailable,
+        isClosed: analysis.isClosed,
+        calculation: analysis.calculation,
+      };
+    })
+  );
 
   // Compute and publish open/closed indent items
   const computeAndPublishIndentItems = (sourceIndents: any[]) => {
@@ -914,49 +941,102 @@ const IndentModule: React.FC<IndentModuleProps> = ({ user }) => {
 
         <div style={{ marginBottom: 16 }}>
           <h4 style={{ color: '#555' }}>Stock & Indent Analysis</h4>
-          <button 
-            onClick={() => {
-              console.log('[IndentDebug] All Indents:', indents);
-              
-              const analysis: any[] = [];
-              indents.forEach((indent, indentIndex) => {
-                indent.items.forEach((item) => {
-                  const analysisData = getIndentAnalysis(item.itemCode, indentIndex, item.qty);
-                  const remaining = getRemainingStock(item.itemCode);
-                  const allocated = getAllocatedStock(item.itemCode);
-                  
-                  analysis.push({
-                    indentNo: indent.indentNo,
-                    itemCode: item.itemCode,
-                    indentQty: item.qty,
-                    totalStock: analysisData.totalStock,
-                    previousIndentsQty: analysisData.previousIndentsQty,
-                    poQuantity: analysisData.poQuantity,
-                    availableForThisIndent: analysisData.availableForThisIndent,
-                    allocatedAvailable: analysisData.allocatedAvailable,
-                    isClosed: analysisData.isClosed,
-                    remainingStock: remaining,
-                    allocatedStock: allocated,
-                    calculation: analysisData.calculation,
-                    status: analysisData.isClosed ? 'CLOSED' : 'OPEN'
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+            <button
+              onClick={() => {
+                console.log('[IndentDebug] All Indents:', indents);
+                const analysis: any[] = [];
+                indents.forEach((indent, indentIndex) => {
+                  indent.items.forEach((item) => {
+                    const analysisData = getIndentAnalysis(item.itemCode, indentIndex, item.qty);
+                    const remaining = getRemainingStock(item.itemCode);
+                    const allocated = getAllocatedStock(item.itemCode);
+                    analysis.push({
+                      indentNo: indent.indentNo,
+                      itemCode: item.itemCode,
+                      indentQty: item.qty,
+                      totalStock: analysisData.totalStock,
+                      previousIndentsQty: analysisData.previousIndentsQty,
+                      poQuantity: analysisData.poQuantity,
+                      availableForThisIndent: analysisData.availableForThisIndent,
+                      allocatedAvailable: analysisData.allocatedAvailable,
+                      isClosed: analysisData.isClosed,
+                      remainingStock: remaining,
+                      allocatedStock: allocated,
+                      calculation: analysisData.calculation,
+                      status: analysisData.isClosed ? 'CLOSED' : 'OPEN'
+                    });
                   });
                 });
-              });
-              
-              console.log('[IndentDebug] Corrected Analysis:', analysis);
-              alert(`Analyzed ${analysis.length} items. Check console for detailed breakdown.`);
-            }}
-            style={{
-              padding: '8px 12px',
-              background: '#4caf50',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            Analyze Corrected Indent Logic
-          </button>
+                console.log('[IndentDebug] Corrected Analysis:', analysis);
+                alert(`Analyzed ${analysis.length} items. Check console for detailed breakdown.`);
+              }}
+              style={{
+                padding: '8px 12px',
+                background: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              Analyze Corrected Indent Logic
+            </button>
+
+            <button
+              onClick={() => setDebugOpen(d => !d)}
+              style={{ padding: '8px 12px', background: '#1976d2', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              {debugOpen ? 'Hide' : 'Show'} Debug Panel
+            </button>
+          </div>
+
+          {debugOpen && (
+            <div style={{ marginTop: 8, padding: 12, background: '#fff', border: '1px solid #ddd', borderRadius: 6 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input placeholder="Filter (item code or name)" value={debugFilter} onChange={e => setDebugFilter(e.target.value)} style={{ padding: 8, borderRadius: 4, border: '1px solid #ccc', minWidth: 240 }} />
+                <button onClick={() => console.log('[IndentDebugPanel] rows:', debugRows)} style={{ padding: '8px 12px', background: '#ff9800', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Log Rows</button>
+                <button onClick={() => navigator.clipboard?.writeText(JSON.stringify(debugRows, null, 2)).then(()=>alert('Copied to clipboard'))} style={{ padding: '8px 12px', background: '#9c27b0', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Copy JSON</button>
+              </div>
+
+              <div style={{ maxHeight: 320, overflow: 'auto', borderTop: '1px solid #eee', paddingTop: 8 }}>
+                <table border={1} cellPadding={8} style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f3f3' }}>
+                      <th>Indent No</th>
+                      <th>Item</th>
+                      <th>Code</th>
+                      <th>Qty</th>
+                      <th>Total</th>
+                      <th>Prev</th>
+                      <th>PO</th>
+                      <th>Available Before</th>
+                      <th>Available After</th>
+                      <th>Allocated</th>
+                      <th>Calc</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debugRows.filter(r => !debugFilter || String(r.itemCode).toLowerCase().includes(debugFilter.toLowerCase()) || String(r.itemName).toLowerCase().includes(debugFilter.toLowerCase())).map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.indentNo}</td>
+                        <td>{r.itemName}</td>
+                        <td>{r.itemCode}</td>
+                        <td>{r.qty}</td>
+                        <td>{r.totalStock}</td>
+                        <td>{r.previousIndentsQty}</td>
+                        <td>{r.poQuantity}</td>
+                        <td>{r.availableBefore}</td>
+                        <td>{r.availableForThisIndent}</td>
+                        <td>{r.allocatedAvailable}</td>
+                        <td style={{ maxWidth: 240, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.calculation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
