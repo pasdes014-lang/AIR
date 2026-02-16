@@ -76,14 +76,36 @@ const PurchaseModule: React.FC<PurchaseModuleProps> = ({ user }) => {
 
   // Subscribe to Firestore collections
   useEffect(() => {
-    const unsubOpen = subscribeFirestoreDocs(uid, 'openIndentItems', setOpenIndentItems);
-    const unsubClosed = subscribeFirestoreDocs(uid, 'closedIndentItems', setClosedIndentItems);
-    const unsubStock = subscribeFirestoreDocs(uid, 'stock-records', setStockRecords);
-    const unsubIndent = subscribeFirestoreDocs(uid, 'indentData', setIndentData);
-    const unsubItemMaster = subscribeFirestoreDocs(uid, 'itemMasterData', setItemMasterData);
-    const unsubPsir = subscribeFirestoreDocs(uid, 'psirData', setPsirData);
+    console.info('[PurchaseModule] Setting up Firestore subscriptions for user:', uid);
+    
+    // Note: Using correct collection names that match firestoreServices.ts
+    const unsubOpen = subscribeFirestoreDocs(uid, 'openIndentItems', (docs) => {
+      console.debug('[PurchaseModule] openIndentItems updated:', docs.length, 'records');
+      setOpenIndentItems(docs);
+    });
+    const unsubClosed = subscribeFirestoreDocs(uid, 'closedIndentItems', (docs) => {
+      console.debug('[PurchaseModule] closedIndentItems updated:', docs.length, 'records');
+      setClosedIndentItems(docs);
+    });
+    const unsubStock = subscribeFirestoreDocs(uid, 'stockRecords', (docs) => {
+      console.debug('[PurchaseModule] stockRecords updated:', docs.length, 'records');
+      setStockRecords(docs);
+    });
+    const unsubIndent = subscribeFirestoreDocs(uid, 'indentData', (docs) => {
+      console.debug('[PurchaseModule] indentData updated:', docs.length, 'records');
+      setIndentData(docs);
+    });
+    const unsubItemMaster = subscribeFirestoreDocs(uid, 'itemMaster', (docs) => {
+      console.debug('[PurchaseModule] itemMaster updated:', docs.length, 'records');
+      setItemMasterData(docs);
+    });
+    const unsubPsir = subscribeFirestoreDocs(uid, 'psirData', (docs) => {
+      console.debug('[PurchaseModule] psirData updated:', docs.length, 'records');
+      setPsirData(docs);
+    });
     
     return () => {
+      console.debug('[PurchaseModule] Unsubscribing from all Firestore collections');
       unsubOpen();
       unsubClosed();
       unsubStock();
